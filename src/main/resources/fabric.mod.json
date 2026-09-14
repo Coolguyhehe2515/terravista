@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "terravista",
+  "version": "${version}",
+  "name": "TerraVista",
+  "description": "Terrain Level of Detail renderer for Minecraft.",
+  "authors": [
+    "KrispyBRN"
+  ],
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.krispy.terravista.TerraVistaClient"
+    ]
+  },
+  "mixins": [
+    {
+      "config": "terravista.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "1.21.1",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
