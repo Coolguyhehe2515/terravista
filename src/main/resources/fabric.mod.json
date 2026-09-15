@@ -12,6 +12,16 @@
   "entrypoints": {
     "client": [
       "com.krispy.terravista.TerraVistaClient"
+      "entrypoints": {
+  "client": [
+    "com.krispy.terravista.TerraVistaClient"
+  ],
+  "modmenu": [
+    "com.krispy.terravista.TerraVistaModMenu"
+  ]
+      }
+  ]
+      }
     ]
   },
   "mixins": [
