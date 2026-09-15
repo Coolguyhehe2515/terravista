@@ -13,22 +13,11 @@ public class LodManager {
     private final Map<Long, LodChunk> cache = new HashMap<>();
 
     private ClientWorld world;
-    private int lastSampleStep = -1;
 
     public void updateWorld(ClientWorld world) {
         if (this.world != world) {
             this.world = world;
             cache.clear();
-            lastSampleStep = -1;
-        }
-
-        int sampleStep = normalizeSampleStep(
-                TerraVistaConfig.get().sampleStep
-        );
-
-        if (sampleStep != lastSampleStep) {
-            cache.clear();
-            lastSampleStep = sampleStep;
         }
     }
 
@@ -54,8 +43,8 @@ public class LodManager {
                 int chunkZ = centerChunkZ + z;
 
                 double distance = Math.sqrt(
-                        (double) x * x * 256.0 +
-                        (double) z * z * 256.0
+                        (double) x * x * 16.0 * 16.0 +
+                        (double) z * z * 16.0 * 16.0
                 );
 
                 if (distance < config.nearDistance) {
@@ -66,21 +55,31 @@ public class LodManager {
                     continue;
                 }
 
+                int sampleStep = getSampleStep(
+                        distance,
+                        config.nearDistance,
+                        config.lodDistance,
+                        config.sampleStep
+                );
+
                 ChunkPos chunkPos = new ChunkPos(chunkX, chunkZ);
                 long key = chunkPos.toLong();
 
-                if (cache.containsKey(key)) {
+                if (!world.isChunkLoaded(chunkX, chunkZ)) {
                     continue;
                 }
 
-                if (!world.isChunkLoaded(chunkX, chunkZ)) {
+                LodChunk cached = cache.get(key);
+
+                if (cached != null &&
+                        cached.getSampleStep() == sampleStep) {
                     continue;
                 }
 
                 LodChunk lodChunk = LodGenerator.generate(
                         world,
                         chunkPos,
-                        normalizeSampleStep(config.sampleStep)
+                        sampleStep
                 );
 
                 if (lodChunk != null) {
@@ -90,7 +89,42 @@ public class LodManager {
             }
         }
 
-        removeFarChunks(centerChunkX, centerChunkZ, radius);
+        removeFarChunks(
+                centerChunkX,
+                centerChunkZ,
+                radius
+        );
+    }
+
+    private int getSampleStep(
+            double distance,
+            int nearDistance,
+            int lodDistance,
+            int baseSampleStep
+    ) {
+        if (distance <= nearDistance * 2.0) {
+            return normalizeSampleStep(baseSampleStep);
+        }
+
+        if (distance <= nearDistance * 4.0) {
+            return normalizeSampleStep(
+                    Math.max(2, baseSampleStep)
+            );
+        }
+
+        if (distance <= nearDistance * 8.0) {
+            return normalizeSampleStep(
+                    Math.max(4, baseSampleStep)
+            );
+        }
+
+        if (distance <= lodDistance) {
+            return normalizeSampleStep(
+                    Math.max(8, baseSampleStep)
+            );
+        }
+
+        return normalizeSampleStep(baseSampleStep);
     }
 
     private void removeFarChunks(
@@ -123,7 +157,6 @@ public class LodManager {
     public void clear() {
         cache.clear();
         world = null;
-        lastSampleStep = -1;
     }
 
     private static int normalizeSampleStep(int sampleStep) {
