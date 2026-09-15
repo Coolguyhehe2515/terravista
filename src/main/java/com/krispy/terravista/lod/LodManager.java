@@ -19,9 +19,12 @@ public class LodManager {
         if (this.world != world) {
             this.world = world;
             cache.clear();
+            lastSampleStep = -1;
         }
 
-        int sampleStep = TerraVistaConfig.get().sampleStep;
+        int sampleStep = normalizeSampleStep(
+                TerraVistaConfig.get().sampleStep
+        );
 
         if (sampleStep != lastSampleStep) {
             cache.clear();
@@ -36,9 +39,12 @@ public class LodManager {
 
         TerraVistaConfig config = TerraVistaConfig.get();
 
+        if (!config.enabled) {
+            return;
+        }
+
         int radius = Math.max(1, config.renderDistance);
         int maxPerFrame = Math.max(1, config.maxChunksPerFrame);
-
         int generated = 0;
 
         for (int z = -radius; z <= radius && generated < maxPerFrame; z++) {
@@ -47,10 +53,10 @@ public class LodManager {
                 int chunkX = centerChunkX + x;
                 int chunkZ = centerChunkZ + z;
 
-                int dx = x * 16;
-                int dz = z * 16;
-
-                double distance = Math.sqrt((double) dx * dx + (double) dz * dz);
+                double distance = Math.sqrt(
+                        (double) x * x * 256.0 +
+                        (double) z * z * 256.0
+                );
 
                 if (distance < config.nearDistance) {
                     continue;
@@ -67,10 +73,14 @@ public class LodManager {
                     continue;
                 }
 
+                if (!world.isChunkLoaded(chunkX, chunkZ)) {
+                    continue;
+                }
+
                 LodChunk lodChunk = LodGenerator.generate(
                         world,
                         chunkPos,
-                        config.sampleStep
+                        normalizeSampleStep(config.sampleStep)
                 );
 
                 if (lodChunk != null) {
@@ -83,11 +93,16 @@ public class LodManager {
         removeFarChunks(centerChunkX, centerChunkZ, radius);
     }
 
-    private void removeFarChunks(int centerChunkX, int centerChunkZ, int radius) {
+    private void removeFarChunks(
+            int centerChunkX,
+            int centerChunkZ,
+            int radius
+    ) {
         int maxDistance = radius + 2;
         int maxDistanceSquared = maxDistance * maxDistance;
 
-        Iterator<Map.Entry<Long, LodChunk>> iterator = cache.entrySet().iterator();
+        Iterator<Map.Entry<Long, LodChunk>> iterator =
+                cache.entrySet().iterator();
 
         while (iterator.hasNext()) {
             LodChunk lodChunk = iterator.next().getValue();
@@ -109,5 +124,21 @@ public class LodManager {
         cache.clear();
         world = null;
         lastSampleStep = -1;
+    }
+
+    private static int normalizeSampleStep(int sampleStep) {
+        if (sampleStep <= 1) {
+            return 1;
+        }
+
+        if (sampleStep <= 2) {
+            return 2;
+        }
+
+        if (sampleStep <= 4) {
+            return 4;
+        }
+
+        return 8;
     }
 }
