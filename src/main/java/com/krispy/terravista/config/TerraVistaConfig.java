@@ -40,8 +40,14 @@ public class TerraVistaConfig {
         return INSTANCE;
     }
 
-    public static void loadConfig() {
-        INSTANCE = load();
+    public static void save() {
+        TerraVistaConfig config = get();
+
+        try {
+            Files.createDirectories(CONFIG_PATH.getParent());
+            Files.writeString(CONFIG_PATH, GSON.toJson(config));
+        } catch (IOException ignored) {
+        }
     }
 
     private static TerraVistaConfig load() {
@@ -52,23 +58,13 @@ public class TerraVistaConfig {
         }
 
         try {
-            String json = Files.readString(CONFIG_PATH);
-            TerraVistaConfig config = GSON.fromJson(json, TerraVistaConfig.class);
-
-            if (config == null) {
-                config = new TerraVistaConfig();
-            }
-
-            return config;
-        } catch (IOException | RuntimeException e) {
-            TerraVistaConfig config = new TerraVistaConfig();
-            save(config);
-            return config;
+            return GSON.fromJson(
+                    Files.readString(CONFIG_PATH),
+                    TerraVistaConfig.class
+            );
+        } catch (Exception ignored) {
+            return new TerraVistaConfig();
         }
-    }
-
-    public static void save() {
-        save(get());
     }
 
     private static void save(TerraVistaConfig config) {
