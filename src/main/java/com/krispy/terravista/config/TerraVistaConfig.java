@@ -18,19 +18,14 @@ public class TerraVistaConfig {
             .getConfigDir()
             .resolve("terravista.json");
 
-    public boolean enabled = true;
-
-    public int nearDistance = 128;
-
-    public int lodDistance = 1024;
-
-    public int renderDistance = 32;
-
-    public int sampleStep = 4;
-
-    public int maxChunksPerFrame = 2;
-
     private static TerraVistaConfig INSTANCE;
+
+    public boolean enabled = true;
+    public int nearDistance = 128;
+    public int lodDistance = 1024;
+    public int renderDistance = 32;
+    public int sampleStep = 4;
+    public int maxChunksPerFrame = 2;
 
     public static TerraVistaConfig get() {
         if (INSTANCE == null) {
@@ -38,6 +33,10 @@ public class TerraVistaConfig {
         }
 
         return INSTANCE;
+    }
+
+    public static void loadConfig() {
+        INSTANCE = load();
     }
 
     public static void save() {
@@ -53,21 +52,23 @@ public class TerraVistaConfig {
     private static TerraVistaConfig load() {
         if (!Files.exists(CONFIG_PATH)) {
             TerraVistaConfig config = new TerraVistaConfig();
-            save(config);
+            write(config);
             return config;
         }
 
         try {
-            return GSON.fromJson(
+            TerraVistaConfig config = GSON.fromJson(
                     Files.readString(CONFIG_PATH),
                     TerraVistaConfig.class
             );
+
+            return config != null ? config : new TerraVistaConfig();
         } catch (Exception ignored) {
             return new TerraVistaConfig();
         }
     }
 
-    private static void save(TerraVistaConfig config) {
+    private static void write(TerraVistaConfig config) {
         try {
             Files.createDirectories(CONFIG_PATH.getParent());
             Files.writeString(CONFIG_PATH, GSON.toJson(config));
