@@ -1,34 +1,24 @@
 package com.krispy.terravista.lod;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import net.minecraft.client.render.GameRenderer;
-import net.minecraft.client.render.VertexBuffer;
-import org.joml.Matrix4f;
-
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
+
+import org.joml.Matrix4f;
 
 public class LodRenderer {
 
     private static final Map<Long, LodMesh> meshes = new HashMap<>();
 
     public static void render(
-            Matrix4f positionMatrix,
-            Map<Long, LodChunk> chunks,
-            double cameraX,
-            double cameraY,
-            double cameraZ
+            Matrix4f viewMatrix,
+            Matrix4f projectionMatrix,
+            Map<Long, LodChunk> chunks
     ) {
         if (chunks.isEmpty()) {
+            cleanupMissing(chunks);
             return;
         }
-
-        RenderSystem.enableDepthTest();
-        RenderSystem.disableBlend();
-
-        RenderSystem.setShader(
-                GameRenderer::getPositionColorProgram
-        );
 
         for (Map.Entry<Long, LodChunk> entry : chunks.entrySet()) {
 
@@ -41,17 +31,32 @@ public class LodRenderer {
                 mesh = new LodMesh();
                 mesh.build(chunk);
                 meshes.put(key, mesh);
+            } else if (!mesh.matches(chunk)) {
+                mesh.close();
+                mesh = new LodMesh();
+                mesh.build(chunk);
+                meshes.put(key, mesh);
             }
 
-            mesh.draw();
+            mesh.draw(viewMatrix, projectionMatrix);
         }
+
+        cleanupMissing(chunks);
     }
 
-    public static void remove(long key) {
-        LodMesh mesh = meshes.remove(key);
+    private static void cleanupMissing(
+            Map<Long, LodChunk> chunks
+    ) {
+        Iterator<Map.Entry<Long, LodMesh>> iterator =
+                meshes.entrySet().iterator();
 
-        if (mesh != null) {
-            mesh.close();
+        while (iterator.hasNext()) {
+            Map.Entry<Long, LodMesh> entry = iterator.next();
+
+            if (!chunks.containsKey(entry.getKey())) {
+                entry.getValue().close();
+                iterator.remove();
+            }
         }
     }
 
